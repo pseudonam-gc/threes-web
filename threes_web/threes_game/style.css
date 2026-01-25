@@ -1,0 +1,150 @@
+ html, body 
+ { 
+  width:100% !important; 
+  height:100% !important; 
+  min-width:100%; 
+  min-height:100%; 
+  max-width:100%; 
+  max-height:100%; 
+}
+
+#window1 
+{ 
+  margin:0.4em; 
+  top:0.4em; 
+  padding: 0; 
+} 
+
+#device 
+{ 
+  position: relative; 
+  
+  margin-top:1em;
+  margin-left:auto;
+  margin-right:auto;
+  margin-bottom:auto;
+
+  display: block; 
+  width:21em; 
+  height:30.5em; 
+  background-repeat:no-repeat; 
+  background-size:contain;
+  background-image:url(images/playBG.png); 
+}
+
+img 
+{ 
+  border: none; 
+}
+
+.clear 
+{ 
+  clear: both; 
+  height: 0; 
+  line-height: 0; 
+}
+
+.buttons 
+{ 
+  margin:auto; 
+  display: block; 
+  width: 100%;
+  max-width:25em;
+  padding: 20px 00px 00px 00px; 
+}
+
+#buttonappstore, #buttongoogleplay, #buttonamazon, #buttonwindows
+{
+  clear: none;
+  float: left;
+  position: relative;
+  
+  height: 90px;
+  width: 170px;
+  
+  margin: 0px 10px 10px 14.5px;
+  
+  background: transparent url('images/btn_appstore.svg') top left repeat-y;
+  
+  z-index: 10;
+}
+
+#plushwrapper
+{
+  margin: 0 50px auto;
+}
+
+#plush
+{
+  clear: none;
+  float: left;
+  position: relative;
+  
+  height: 300px;
+  width: 300px;
+
+  background-size:contain;
+  background-image:url('images/plush.png');
+  
+  z-index: 10;
+}
+
+#buttongoogleplay
+{
+margin-top: 0px;
+background: transparent url('images/btn_googleplay.svg') top left repeat-y;
+}
+
+#buttonamazon
+{
+margin-top: 0px;
+background: transparent url('images/btn_amazon.svg') top left repeat-y;
+}
+
+#buttonwindows
+{
+margin-top: 0px;
+background: transparent url('images/btn_windowsphone.svg') top left repeat-y;
+}
+
+#buttonappstore:hover, #buttongoogleplay:hover, #buttonamazon:hover, #buttonwindows:hover
+{
+cursor: pointer;
+background: transparent url('images/btn_appstore.svg') 0px -90px repeat-y;
+}
+
+#buttongoogleplay:hover
+{
+background: transparent url('images/btn_googleplay.svg') 0px -90px repeat-y;
+}
+
+#buttonamazon:hover
+{
+background: transparent url('images/btn_amazon.svg') 0px -90px repeat-y;
+}
+
+#buttonwindows:hover
+{
+background: transparent url('images/btn_windowsphone.svg') 0px -90px repeat-y;
+}
+
+#buttonappstore:active, #buttongoogleplay:active, #buttonamazon:active, #buttonwindows:active
+{
+cursor: pointer;
+background: transparent url('images/btn_appstore.svg') 0px -180px repeat-y;
+}
+
+#buttongoogleplay:active
+{
+background: transparent url('images/btn_googleplay.svg') 0px -180px repeat-y;
+}
+
+#buttonamazon:active
+{
+background: transparent url('images/btn_amazon.svg') 0px -180px repeat-y;
+}
+
+#buttonwindows:active
+{
+background: transparent url('images/btn_windowsphone.svg') 0px -180px repeat-y;
+}

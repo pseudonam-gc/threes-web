@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#faf8ef">
+    <meta name="description" content="Threes - A tiny puzzle that grows on you">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Threes">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.svg">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Threes</title>
+</head>
+<body>
+    <header class="header">
+        <h1 class="title">Threes</h1>
+        <div class="scores">
+            <div class="score-box">
+                <div class="score-label">Score</div>
+                <div class="score-value" id="score">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">Best</div>
+                <div class="score-value" id="high-score">0</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="game-container">
+        <div class="board" id="board"></div>
+    </main>
+
+    <footer class="controls">
+        <div class="next-tile">
+            <span class="next-tile-label">Next:</span>
+            <div class="next-tile-box" id="next-tile">
+                <span id="next-tile-value">3</span>
+            </div>
+        </div>
+        <div class="control-buttons">
+            <button class="sound-toggle" id="sound-toggle" aria-label="Toggle sound">
+                <span id="sound-icon">🔊</span>
+            </button>
+            <button class="btn btn-secondary" id="new-game-btn">New Game</button>
+        </div>
+    </footer>
+
+    <!-- Game Over Modal -->
+    <div class="overlay" id="game-over">
+        <div class="modal">
+            <h2>Game Over</h2>
+            <div class="score-display" id="final-score">0</div>
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="stat-value" id="highest-tile">0</div>
+                    <div class="stat-label">Highest Tile</div>
+                </div>
+            </div>
+            <p class="new-high-score" id="new-high-score" style="display: none;">New High Score!</p>
+            <div class="buttons">
+                <button class="btn btn-primary" id="play-again-btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog -->
+    <div class="overlay" id="confirm-dialog">
+        <div class="modal">
+            <h2>Confirm</h2>
+            <p id="confirm-message">Start new game? Current progress will be lost.</p>
+            <div class="buttons">
+                <button class="btn btn-secondary" id="confirm-no">Cancel</button>
+                <button class="btn btn-primary" id="confirm-yes">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/game.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/controls.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
