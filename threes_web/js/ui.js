@@ -121,7 +121,9 @@ class ThreesUI {
         }
 
         // 2. Apply transforms to animate tiles to new positions
-        const cellSize = this.boardEl.offsetWidth / SIZE;
+        // Get actual cell spacing by measuring distance between adjacent cells
+        const cells = this.boardEl.querySelectorAll('.cell');
+        const cellSize = cells[1].getBoundingClientRect().left - cells[0].getBoundingClientRect().left;
         const animatedTiles = [];
 
         for (const movement of moveResult.movements) {
@@ -137,29 +139,52 @@ class ThreesUI {
         // 3. Wait for slide animation
         await new Promise(resolve => setTimeout(resolve, 150));
 
-        // 4. Lower z-index so new tiles render on top
+        // 4. Hide animated tiles completely before state change
         for (const tile of animatedTiles) {
-            tile.style.zIndex = '1';
+            tile.style.visibility = 'hidden';
         }
 
-        // 5. Render final state - new tiles appear on top of animated tiles
+        // 5. Render final state - new tiles appear at correct positions
         this.render();
 
-        // 6. Reset transforms (invisible since animated tiles are underneath)
+        // 6. Reset transforms on hidden tiles (no visual effect)
         for (const tile of animatedTiles) {
             tile.style.transition = 'none';
             tile.style.transform = '';
             tile.style.zIndex = '';
         }
 
-        // 7. Re-enable transitions
-        requestAnimationFrame(() => {
-            for (const tile of animatedTiles) {
-                tile.style.transition = '';
-            }
-        });
+        // 7. Force reflow then restore visibility and transitions
+        this.boardEl.offsetHeight;
+        for (const tile of animatedTiles) {
+            tile.style.visibility = '';
+            tile.style.transition = '';
+        }
 
-        // 7. Merge pulse animations
+        // 8. Animate spawned tile sliding in from edge
+        if (moveResult.spawnedTile) {
+            const { row, col, direction } = moveResult.spawnedTile;
+            const spawnedTile = this.tileElements[row][col];
+
+            // Position off-screen based on swipe direction (tile comes from opposite edge)
+            spawnedTile.style.transition = 'none';
+            if (direction === UP) {
+                spawnedTile.style.transform = 'translateY(100%)';
+            } else if (direction === DOWN) {
+                spawnedTile.style.transform = 'translateY(-100%)';
+            } else if (direction === LEFT) {
+                spawnedTile.style.transform = 'translateX(100%)';
+            } else if (direction === RIGHT) {
+                spawnedTile.style.transform = 'translateX(-100%)';
+            }
+
+            // Force reflow then animate to final position
+            spawnedTile.offsetHeight;
+            spawnedTile.style.transition = '';
+            spawnedTile.style.transform = '';
+        }
+
+        // 9. Merge pulse animations
         for (const merge of moveResult.merges) {
             const tile = this.tileElements[merge.row][merge.col];
             tile.classList.add('merge-pulse');

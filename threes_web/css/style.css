@@ -111,6 +111,8 @@ body {
     background: var(--cell-bg);
     border-radius: 6px;
     position: relative;
+    overflow: visible !important;
+    contain: none;
 }
 
 /* Tiles */
