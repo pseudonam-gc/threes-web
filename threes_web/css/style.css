@@ -234,6 +234,11 @@ body {
     color: var(--tile-high-text);
 }
 
+.next-tile-box.tile-bonus {
+    background: var(--tile-high-bg);
+    color: #8B5CF6;
+}
+
 .btn {
     padding: 12px 24px;
     font-size: 1rem;

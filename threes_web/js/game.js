@@ -16,6 +16,7 @@ class ThreesGame {
         this.score = 0;
         this.bag = [4, 4, 4]; // 4 ones, 4 twos, 4 threes
         this.nextTile = 0;
+        this.nextTileIsBonus = false;
         this.movesMade = 0;
         this.bonusPosition = 0;
         this.maxTile = 0;
@@ -51,9 +52,16 @@ class ThreesGame {
 
     drawFromBag() {
         // Check if bonus tile should be drawn
-        if ((this.movesMade % 21) === this.bonusPosition && this.maxTile >= 7) {
+        const movesMod = this.movesMade % 21;
+        const bonusCheck = movesMod === this.bonusPosition;
+        const maxTileCheck = this.maxTile >= 7;
+
+        if (bonusCheck && maxTileCheck) {
+            this.nextTileIsBonus = true;
             return this.drawBonusTile();
         }
+
+        this.nextTileIsBonus = false;
 
         // Draw from regular bag
         const bagSize = this.bag[0] + this.bag[1] + this.bag[2];
@@ -376,6 +384,7 @@ class ThreesGame {
             score: this.score,
             bag: [...this.bag],
             nextTile: this.nextTile,
+            nextTileIsBonus: this.nextTileIsBonus,
             movesMade: this.movesMade,
             bonusPosition: this.bonusPosition,
             maxTile: this.maxTile,
@@ -388,6 +397,7 @@ class ThreesGame {
         this.score = state.score;
         this.bag = [...state.bag];
         this.nextTile = state.nextTile;
+        this.nextTileIsBonus = state.nextTileIsBonus || false;
         this.movesMade = state.movesMade;
         this.bonusPosition = state.bonusPosition;
         this.maxTile = state.maxTile;

@@ -92,7 +92,9 @@ class ThreesUI {
         this.nextTileValueEl.textContent = displayValue;
         this.nextTileEl.className = 'next-tile-box';
 
-        if (value === 1) {
+        if (this.game.nextTileIsBonus) {
+            this.nextTileEl.classList.add('tile-bonus');
+        } else if (value === 1) {
             this.nextTileEl.classList.add('tile-1');
         } else if (value === 2) {
             this.nextTileEl.classList.add('tile-2');
