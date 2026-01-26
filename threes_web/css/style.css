@@ -82,14 +82,61 @@ body {
     color: white;
 }
 
+/* Game wrapper - contains board and AI sidebar */
+.game-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+    width: 100%;
+    max-width: 700px;
+    padding: 0 20px;
+}
+
 /* Game container */
 .game-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
-    max-width: 500px;
-    padding: 0 20px;
+    max-width: 400px;
+    flex-shrink: 0;
+}
+
+/* AI Sidebar */
+.ai-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px;
+    background: var(--board-bg);
+    border-radius: 8px;
+    min-width: 140px;
+}
+
+.sidebar-title {
+    font-size: 0.9rem;
+    color: white;
+    margin: 0 0 5px 0;
+    text-align: center;
+}
+
+.ai-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ai-buttons .btn {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    width: 100%;
+}
+
+.footer-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 /* Board */
@@ -101,9 +148,10 @@ body {
     padding: 10px;
     background: var(--board-bg);
     border-radius: 8px;
-    width: 100%;
-    aspect-ratio: 1;
-    max-width: min(calc(100vh - 250px), 400px);
+    width: min(calc(100vh - 250px), 400px);
+    height: min(calc(100vh - 250px), 400px);
+    max-width: 400px;
+    max-height: 400px;
     overflow: hidden;
 }
 
@@ -241,22 +289,64 @@ body {
 
 .ai-hint {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 4px;
+    padding: 8px;
     background: #2a2a4e;
     border-radius: 6px;
     color: #fff;
 }
 
 .ai-label {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #888;
 }
 
 #ai-action {
     font-weight: bold;
     color: #4CAF50;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.ai-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: white;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.depth-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+}
+
+.depth-label select {
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: white;
+    font-size: 0.8rem;
 }
 
 .btn {
@@ -426,7 +516,36 @@ body {
     }
 
     .board {
-        max-width: min(calc(100vh - 180px), 400px);
+        width: min(calc(100vh - 180px), 400px);
+        height: min(calc(100vh - 180px), 400px);
+    }
+}
+
+@media (max-width: 600px) {
+    .game-wrapper {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .ai-sidebar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        min-width: auto;
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .sidebar-title {
+        width: 100%;
+    }
+
+    .ai-buttons {
+        flex-direction: row;
+    }
+
+    .ai-buttons .btn {
+        width: auto;
     }
 }
 

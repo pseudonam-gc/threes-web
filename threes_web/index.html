@@ -28,8 +28,35 @@
         </div>
     </header>
 
-    <main class="game-container">
-        <div class="board" id="board"></div>
+    <main class="game-wrapper">
+        <div class="game-container">
+            <div class="board" id="board"></div>
+        </div>
+
+        <aside class="ai-sidebar">
+            <h3 class="sidebar-title">AI Controls</h3>
+            <div class="ai-hint" id="ai-hint" style="display: none;">
+                <span class="ai-label">AI:</span>
+                <span id="ai-action">-</span>
+            </div>
+            <div class="ai-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="expectimax-toggle">
+                    <span>Expectimax</span>
+                </label>
+                <label class="depth-label" id="depth-container" style="display: none;">
+                    Depth: <select id="expectimax-depth">
+                        <option value="1">1</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                    </select>
+                </label>
+            </div>
+            <div class="ai-buttons">
+                <button class="btn btn-secondary" id="ai-btn" disabled>AI Hint</button>
+                <button class="btn btn-secondary" id="auto-ai-btn" disabled>Auto AI</button>
+            </div>
+        </aside>
     </main>
 
     <footer class="controls">
@@ -39,16 +66,10 @@
                 <span id="next-tile-value">3</span>
             </div>
         </div>
-        <div class="ai-hint" id="ai-hint" style="display: none;">
-            <span class="ai-label">AI:</span>
-            <span id="ai-action">-</span>
-        </div>
-        <div class="control-buttons">
+        <div class="footer-buttons">
             <button class="sound-toggle" id="sound-toggle" aria-label="Toggle sound">
                 <span id="sound-icon">🔊</span>
             </button>
-            <button class="btn btn-secondary" id="ai-btn" disabled>AI Hint</button>
-            <button class="btn btn-secondary" id="auto-ai-btn" disabled>Auto AI</button>
             <button class="btn btn-secondary" id="new-game-btn">New Game</button>
         </div>
     </footer>
@@ -92,6 +113,7 @@
     <script src="js/ui.js"></script>
     <script src="js/controls.js"></script>
     <script src="js/ai.js"></script>
+    <script src="js/expectimax.js"></script>
     <script src="js/main.js"></script>
 </body>
 </html>

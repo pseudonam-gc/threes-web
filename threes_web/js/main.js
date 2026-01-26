@@ -9,6 +9,7 @@ class ThreesApp {
         this.controls = null;
         this.pendingMove = null; // Buffered input during animation
         this.ai = null; // AI model
+        this.expectimax = null; // Expectimax search
         this.autoAIRunning = false; // Auto-AI mode flag
     }
 
@@ -63,6 +64,8 @@ class ThreesApp {
             if (loaded) {
                 document.getElementById('ai-btn').disabled = false;
                 document.getElementById('auto-ai-btn').disabled = false;
+                // Initialize expectimax search
+                this.expectimax = new ExpectimaxSearch(this.ai);
                 console.log('AI model loaded successfully');
             } else {
                 console.warn('Failed to load AI model');
@@ -72,19 +75,41 @@ class ThreesApp {
         }
     }
 
+    isExpectimaxEnabled() {
+        return document.getElementById('expectimax-toggle').checked;
+    }
+
+    getExpectimaxDepth() {
+        return parseInt(document.getElementById('expectimax-depth').value, 10);
+    }
+
     async getAIHint() {
         if (!this.ai || !this.ai.isLoaded || this.game.gameOver) return;
 
         try {
-            const result = await this.ai.predict(this.game);
             const actions = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
             const actionEl = document.getElementById('ai-action');
             const hintEl = document.getElementById('ai-hint');
 
-            actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
-            hintEl.style.display = 'flex';
+            let result;
+            if (this.isExpectimaxEnabled() && this.expectimax) {
+                // Use expectimax search
+                const depth = this.getExpectimaxDepth();
+                actionEl.textContent = 'Thinking...';
+                hintEl.style.display = 'flex';
 
-            console.log('AI prediction:', actions[result.action], 'probs:', result.probs.map(p => p.toFixed(3)));
+                result = await this.expectimax.search(this.game, depth);
+                actionEl.textContent = `${actions[result.action]} (v=${result.value.toFixed(1)}, n=${result.nodesEvaluated})`;
+                console.log('Expectimax:', actions[result.action], 'value:', result.value.toFixed(2), 'nodes:', result.nodesEvaluated);
+            } else {
+                // Use direct neural network prediction (stateless - doesn't advance LSTM)
+                result = await this.ai.predictWithoutStateUpdate(this.game);
+                actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
+                console.log('AI prediction:', actions[result.action], 'probs:', result.probs.map(p => p.toFixed(3)));
+            }
+
+            hintEl.style.display = 'flex';
+            return result;
         } catch (error) {
             console.error('AI prediction error:', error);
         }
@@ -114,14 +139,22 @@ class ThreesApp {
         }
 
         try {
-            // Get AI prediction
-            const result = await this.ai.predict(this.game);
             const actions = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-
-            // Update hint display
             const actionEl = document.getElementById('ai-action');
             const hintEl = document.getElementById('ai-hint');
-            actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
+
+            let result;
+            if (this.isExpectimaxEnabled() && this.expectimax) {
+                // Use expectimax search
+                const depth = this.getExpectimaxDepth();
+                result = await this.expectimax.search(this.game, depth);
+                actionEl.textContent = `${actions[result.action]} (v=${result.value.toFixed(1)}, n=${result.nodesEvaluated})`;
+            } else {
+                // Use direct neural network prediction
+                result = await this.ai.predict(this.game);
+                actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
+            }
+
             hintEl.style.display = 'flex';
 
             // Make the move
@@ -129,7 +162,7 @@ class ThreesApp {
 
             // Schedule next move (small delay for visibility)
             if (this.autoAIRunning && !this.game.gameOver) {
-                setTimeout(() => this.runAutoAI(), 100);
+                setTimeout(() => this.runAutoAI(), 50);
             }
         } catch (error) {
             console.error('Auto AI error:', error);
@@ -274,6 +307,11 @@ class ThreesApp {
 
         document.getElementById('auto-ai-btn').addEventListener('click', () => {
             this.toggleAutoAI();
+        });
+
+        // Expectimax toggle - show/hide depth selector
+        document.getElementById('expectimax-toggle').addEventListener('change', (e) => {
+            document.getElementById('depth-container').style.display = e.target.checked ? 'flex' : 'none';
         });
     }
 
