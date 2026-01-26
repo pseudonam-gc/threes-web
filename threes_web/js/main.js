@@ -8,6 +8,8 @@ class ThreesApp {
         this.ui = null;
         this.controls = null;
         this.pendingMove = null; // Buffered input during animation
+        this.ai = null; // AI model
+        this.autoAIRunning = false; // Auto-AI mode flag
     }
 
     init() {
@@ -49,6 +51,91 @@ class ThreesApp {
                 this.storage.saveGameState(this.game.getState());
             }
         });
+
+        // Initialize AI model in background
+        this.initAI();
+    }
+
+    async initAI() {
+        try {
+            this.ai = new ThreesAI();
+            const loaded = await this.ai.load('model/onnx_model.onnx');
+            if (loaded) {
+                document.getElementById('ai-btn').disabled = false;
+                document.getElementById('auto-ai-btn').disabled = false;
+                console.log('AI model loaded successfully');
+            } else {
+                console.warn('Failed to load AI model');
+            }
+        } catch (error) {
+            console.error('Error initializing AI:', error);
+        }
+    }
+
+    async getAIHint() {
+        if (!this.ai || !this.ai.isLoaded || this.game.gameOver) return;
+
+        try {
+            const result = await this.ai.predict(this.game);
+            const actions = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
+            const actionEl = document.getElementById('ai-action');
+            const hintEl = document.getElementById('ai-hint');
+
+            actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
+            hintEl.style.display = 'flex';
+
+            console.log('AI prediction:', actions[result.action], 'probs:', result.probs.map(p => p.toFixed(3)));
+        } catch (error) {
+            console.error('AI prediction error:', error);
+        }
+    }
+
+    toggleAutoAI() {
+        this.autoAIRunning = !this.autoAIRunning;
+        const btn = document.getElementById('auto-ai-btn');
+
+        if (this.autoAIRunning) {
+            btn.textContent = 'Stop AI';
+            btn.classList.add('btn-active');
+            this.runAutoAI();
+        } else {
+            btn.textContent = 'Auto AI';
+            btn.classList.remove('btn-active');
+        }
+    }
+
+    async runAutoAI() {
+        if (!this.autoAIRunning || !this.ai || !this.ai.isLoaded) return;
+        if (this.game.gameOver) {
+            this.autoAIRunning = false;
+            document.getElementById('auto-ai-btn').textContent = 'Auto AI';
+            document.getElementById('auto-ai-btn').classList.remove('btn-active');
+            return;
+        }
+
+        try {
+            // Get AI prediction
+            const result = await this.ai.predict(this.game);
+            const actions = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
+
+            // Update hint display
+            const actionEl = document.getElementById('ai-action');
+            const hintEl = document.getElementById('ai-hint');
+            actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
+            hintEl.style.display = 'flex';
+
+            // Make the move
+            await this.handleMove(result.action);
+
+            // Schedule next move (small delay for visibility)
+            if (this.autoAIRunning && !this.game.gameOver) {
+                setTimeout(() => this.runAutoAI(), 100);
+            }
+        } catch (error) {
+            console.error('Auto AI error:', error);
+            this.autoAIRunning = false;
+            document.getElementById('auto-ai-btn').textContent = 'Auto AI';
+        }
     }
 
     async handleMove(direction, skipAnimation = false) {
@@ -129,6 +216,15 @@ class ThreesApp {
         this.ui.render();
         this.controls.enable();
         this.storage.saveGameState(this.game.getState());
+        // Reset AI LSTM state for new game
+        if (this.ai && this.ai.isLoaded) {
+            this.ai.resetState();
+        }
+        // Stop auto-AI and hide hint
+        this.autoAIRunning = false;
+        document.getElementById('auto-ai-btn').textContent = 'Auto AI';
+        document.getElementById('auto-ai-btn').classList.remove('btn-active');
+        document.getElementById('ai-hint').style.display = 'none';
     }
 
     async confirmNewGame() {
@@ -170,6 +266,14 @@ class ThreesApp {
 
         document.getElementById('sound-toggle').addEventListener('click', () => {
             this.toggleSound();
+        });
+
+        document.getElementById('ai-btn').addEventListener('click', () => {
+            this.getAIHint();
+        });
+
+        document.getElementById('auto-ai-btn').addEventListener('click', () => {
+            this.toggleAutoAI();
         });
     }
 

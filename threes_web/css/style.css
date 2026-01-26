@@ -239,6 +239,26 @@ body {
     color: #8B5CF6;
 }
 
+.ai-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #2a2a4e;
+    border-radius: 6px;
+    color: #fff;
+}
+
+.ai-label {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+#ai-action {
+    font-weight: bold;
+    color: #4CAF50;
+}
+
 .btn {
     padding: 12px 24px;
     font-size: 1rem;
@@ -265,6 +285,15 @@ body {
 .btn-secondary {
     background: var(--board-bg);
     color: white;
+}
+
+.btn-active {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-active:hover {
+    background: #45a049;
 }
 
 .btn-secondary:hover {

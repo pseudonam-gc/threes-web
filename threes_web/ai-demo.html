@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Threes AI Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        h1 { color: #f65e3b; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 60px);
+            gap: 5px;
+            margin: 20px 0;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .cell.empty { background: #333; }
+        .cell.tile-1 { background: #a3cedc; color: #fff; }
+        .cell.tile-2 { background: #ff8080; color: #fff; }
+        .cell.tile-high { background: #eee4da; color: #776e65; }
+        .result {
+            background: #2a2a4e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .prob-bar {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .prob-bar label {
+            width: 60px;
+        }
+        .prob-bar .bar {
+            height: 20px;
+            background: #f65e3b;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        .prob-bar .value {
+            margin-left: 10px;
+        }
+        button {
+            background: #f65e3b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #e5533a; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        #status { color: #888; margin: 10px 0; }
+        .recommended {
+            font-size: 24px;
+            color: #4CAF50;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Threes AI Demo</h1>
+    <p id="status">Loading ONNX Runtime...</p>
+
+    <h3>Current Grid State:</h3>
+    <div id="grid" class="grid"></div>
+
+    <div>
+        <button id="randomize" disabled>Randomize Grid</button>
+        <button id="predict" disabled>Get AI Prediction</button>
+        <button id="reset-lstm" disabled>Reset LSTM State</button>
+    </div>
+
+    <div id="result" class="result" style="display: none;">
+        <div class="recommended">Recommended: <span id="recommended-action">-</span></div>
+        <h4>Action Probabilities:</h4>
+        <div class="prob-bar">
+            <label>UP</label>
+            <div class="bar" id="bar-up" style="width: 0%"></div>
+            <span class="value" id="prob-up">0%</span>
+        </div>
+        <div class="prob-bar">
+            <label>DOWN</label>
+            <div class="bar" id="bar-down" style="width: 0%"></div>
+            <span class="value" id="prob-down">0%</span>
+        </div>
+        <div class="prob-bar">
+            <label>LEFT</label>
+            <div class="bar" id="bar-left" style="width: 0%"></div>
+            <span class="value" id="prob-left">0%</span>
+        </div>
+        <div class="prob-bar">
+            <label>RIGHT</label>
+            <div class="bar" id="bar-right" style="width: 0%"></div>
+            <span class="value" id="prob-right">0%</span>
+        </div>
+        <p>State Value: <span id="value">-</span></p>
+    </div>
+
+    <!-- ONNX Runtime Web (1.19+ for opset 20 support) -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+    <script src="js/ai.js"></script>
+
+    <script>
+        const TILE_VALUES = [0, 1, 2, 3, 6, 12, 24, 48, 96, 192, 384, 768, 1536, 3072, 6144, 12288, 24576, 49152, 98304, 196608];
+        const ACTIONS = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
+
+        let ai = null;
+        let currentGame = {
+            grid: [
+                [0, 1, 2, 3],
+                [3, 0, 1, 2],
+                [0, 0, 3, 0],
+                [1, 2, 0, 0]
+            ],
+            bag: [4, 4, 4],
+            nextTile: 1
+        };
+
+        function renderGrid() {
+            const gridEl = document.getElementById('grid');
+            gridEl.innerHTML = '';
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const val = currentGame.grid[i][j];
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (val === 0) {
+                        cell.classList.add('empty');
+                    } else if (val === 1) {
+                        cell.classList.add('tile-1');
+                        cell.textContent = '1';
+                    } else if (val === 2) {
+                        cell.classList.add('tile-2');
+                        cell.textContent = '2';
+                    } else {
+                        cell.classList.add('tile-high');
+                        cell.textContent = TILE_VALUES[val];
+                    }
+                    gridEl.appendChild(cell);
+                }
+            }
+        }
+
+        function randomizeGrid() {
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    // Random tile: 0 (empty), 1, 2, 3, or occasionally higher
+                    const r = Math.random();
+                    if (r < 0.3) {
+                        currentGame.grid[i][j] = 0;
+                    } else if (r < 0.5) {
+                        currentGame.grid[i][j] = 1;
+                    } else if (r < 0.7) {
+                        currentGame.grid[i][j] = 2;
+                    } else if (r < 0.9) {
+                        currentGame.grid[i][j] = 3;
+                    } else {
+                        currentGame.grid[i][j] = Math.floor(Math.random() * 4) + 4; // 4-7 (values 6-48)
+                    }
+                }
+            }
+            currentGame.nextTile = Math.floor(Math.random() * 3) + 1;
+            renderGrid();
+            document.getElementById('result').style.display = 'none';
+        }
+
+        function resetLSTM() {
+            if (ai && ai.isLoaded) {
+                ai.resetState();
+                document.getElementById('result').style.display = 'none';
+            }
+        }
+
+        async function predict() {
+            if (!ai || !ai.isLoaded) {
+                alert('Model not loaded yet');
+                return;
+            }
+
+            try {
+                const result = await ai.predict(currentGame);
+
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('recommended-action').textContent = ACTIONS[result.action];
+
+                ['up', 'down', 'left', 'right'].forEach((dir, i) => {
+                    const pct = (result.probs[i] * 100).toFixed(1);
+                    document.getElementById(`bar-${dir}`).style.width = `${pct * 2}px`;
+                    document.getElementById(`prob-${dir}`).textContent = `${pct}%`;
+                });
+
+                document.getElementById('value').textContent =
+                    result.value !== undefined ? result.value.toFixed(4) : 'N/A';
+            } catch (error) {
+                console.error('Prediction error:', error);
+                alert('Prediction failed: ' + error.message);
+            }
+        }
+
+        async function init() {
+            const statusEl = document.getElementById('status');
+
+            // Initialize AI
+            ai = new ThreesAI();
+            statusEl.textContent = 'Loading AI model...';
+
+            const loaded = await ai.load('model/onnx_model.onnx');
+
+            if (loaded) {
+                statusEl.textContent = 'Model loaded! Ready to predict.';
+                document.getElementById('randomize').disabled = false;
+                document.getElementById('predict').disabled = false;
+                document.getElementById('reset-lstm').disabled = false;
+            } else {
+                statusEl.textContent = 'Failed to load model. Check console for errors.';
+            }
+
+            renderGrid();
+
+            // Event listeners
+            document.getElementById('randomize').addEventListener('click', randomizeGrid);
+            document.getElementById('predict').addEventListener('click', predict);
+            document.getElementById('reset-lstm').addEventListener('click', resetLSTM);
+        }
+
+        init();
+    </script>
+</body>
+</html>
