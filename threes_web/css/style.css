@@ -296,6 +296,7 @@ body {
     background: #2a2a4e;
     border-radius: 6px;
     color: #fff;
+    min-width: 120px;
 }
 
 .ai-label {
@@ -347,6 +348,50 @@ body {
     border: 1px solid #ccc;
     background: white;
     font-size: 0.8rem;
+}
+
+.speed-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+}
+
+.speed-label {
+    font-size: 0.8rem;
+    color: white;
+    text-align: center;
+}
+
+.speed-slider {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #cdc1b4;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+}
+
+.speed-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #4CAF50;
+    cursor: pointer;
+    border: none;
 }
 
 .btn {

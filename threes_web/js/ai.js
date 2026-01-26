@@ -169,7 +169,7 @@ class ThreesAI {
 
     /**
      * Run inference WITHOUT updating LSTM state (for expectimax leaf evaluation)
-     * This allows exploring hypothetical states without corrupting the real LSTM state
+     * Uses the current LSTM state for context but doesn't modify it
      */
     async predictWithoutStateUpdate(game) {
         if (!this.isLoaded) {
@@ -185,10 +185,11 @@ class ThreesAI {
             inputData[i] = BigInt(obs[i]);
         }
 
-        // Create input tensors - use zeros for LSTM state (stateless evaluation)
+        // Create input tensors - use CURRENT LSTM state for better value estimates
+        // (The model was trained with LSTM context, so zeroed state gives poor values)
         const obsTensor = new ort.Tensor('int64', inputData, [1, 24]);
-        const lstmHTensor = new ort.Tensor('float32', new Float32Array(this.hiddenSize).fill(0), [1, this.hiddenSize]);
-        const lstmCTensor = new ort.Tensor('float32', new Float32Array(this.hiddenSize).fill(0), [1, this.hiddenSize]);
+        const lstmHTensor = new ort.Tensor('float32', this.lstmH, [1, this.hiddenSize]);
+        const lstmCTensor = new ort.Tensor('float32', this.lstmC, [1, this.hiddenSize]);
 
         // Run inference
         const feeds = {
@@ -198,7 +199,7 @@ class ThreesAI {
         };
         const results = await this.session.run(feeds);
 
-        // Get outputs (don't update state)
+        // Get outputs (don't update state - we ignore the new LSTM outputs)
         const logits = results['logits'].data;
         const value = results['value'].data[0];
 

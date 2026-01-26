@@ -70,24 +70,55 @@ class ExpectimaxSearch {
         // The next tile is already determined (game.nextTile from before the move)
         // We need to average over spawn positions
         let totalValue = 0;
-        const probability = 1.0 / spawnPositions.length;
+        const positionProbability = 1.0 / spawnPositions.length;
 
         for (const [row, col] of spawnPositions) {
             // Clone and place tile at this position
             const simGame = this.cloneGame(game);
             simGame.grid[row][col] = moveResult.nextTile;
 
-            // Draw next tile for the cloned game (simplified - just use current bag state)
-            simGame.nextTile = this.drawFromBagSimulated(simGame);
-
             let value;
             if (depth <= 0) {
+                // At leaf level, just evaluate with most likely next tile
+                simGame.nextTile = this.getMostLikelyTile(simGame.bag);
                 value = await this.evaluateLeaf(simGame);
             } else {
-                value = await this.maxNode(simGame, depth);
+                // At higher depths, average over possible next tiles from bag
+                const bagTotal = simGame.bag[0] + simGame.bag[1] + simGame.bag[2];
+                let positionValue = 0;
+
+                if (bagTotal === 0) {
+                    // Bag is empty, will be refilled - equal probability for 1, 2, 3
+                    for (let tile = 1; tile <= 3; tile++) {
+                        const simGame2 = this.cloneGame(simGame);
+                        simGame2.bag = [4, 4, 4];
+                        simGame2.nextTile = tile;
+                        positionValue += (await this.maxNode(simGame2, depth)) / 3;
+                    }
+                } else {
+                    // Weight by bag probabilities
+                    for (let tileIdx = 0; tileIdx < 3; tileIdx++) {
+                        if (simGame.bag[tileIdx] === 0) continue;
+
+                        const tile = tileIdx + 1;
+                        const tileProb = simGame.bag[tileIdx] / bagTotal;
+
+                        const simGame2 = this.cloneGame(simGame);
+                        simGame2.bag[tileIdx]--;
+                        simGame2.nextTile = tile;
+
+                        // Refill if needed
+                        if (simGame2.bag[0] + simGame2.bag[1] + simGame2.bag[2] === 0) {
+                            simGame2.bag = [4, 4, 4];
+                        }
+
+                        positionValue += tileProb * (await this.maxNode(simGame2, depth));
+                    }
+                }
+                value = positionValue;
             }
 
-            totalValue += probability * value;
+            totalValue += positionProbability * value;
         }
 
         return totalValue;
@@ -239,29 +270,33 @@ class ExpectimaxSearch {
 
     /**
      * Slide and merge an array (core Threes logic)
+     * Must match game.js slideAndMerge exactly
      */
     slideArray(arr) {
         const EMPTY = 0;
-        const result = [...arr];
+        const SIZE = 4;
         let moved = false;
 
-        for (let i = 0; i < result.length - 1; i++) {
-            if (result[i] === EMPTY && result[i + 1] !== EMPTY) {
-                // Slide into empty space
-                result[i] = result[i + 1];
-                result[i + 1] = EMPTY;
-                moved = true;
-            } else if (result[i] !== EMPTY && result[i + 1] !== EMPTY) {
-                // Try to merge
-                if (this.canCombine(result[i], result[i + 1])) {
-                    result[i] = this.combine(result[i], result[i + 1]);
-                    result[i + 1] = EMPTY;
+        // Process from index 1 to end, checking if each tile can move/merge into previous position
+        // This matches game.js slideAndMerge exactly
+        for (let i = 1; i < SIZE; i++) {
+            if (arr[i] !== EMPTY) {
+                // Check for merge first
+                if (this.canCombine(arr[i], arr[i - 1])) {
+                    arr[i - 1] = this.combine(arr[i], arr[i - 1]);
+                    arr[i] = EMPTY;
+                    moved = true;
+                }
+                // Check for slide into empty
+                else if (arr[i - 1] === EMPTY) {
+                    arr[i - 1] = arr[i];
+                    arr[i] = EMPTY;
                     moved = true;
                 }
             }
         }
 
-        return { arr: result, moved };
+        return { arr, moved };
     }
 
     canCombine(a, b) {
@@ -279,30 +314,16 @@ class ExpectimaxSearch {
     }
 
     /**
-     * Simplified bag draw for simulation
+     * Get most likely next tile from bag (deterministic)
      */
-    drawFromBagSimulated(game) {
-        const bag = game.bag;
+    getMostLikelyTile(bag) {
         const total = bag[0] + bag[1] + bag[2];
+        if (total === 0) return 2; // Middle value as default
 
-        if (total === 0) {
-            // Refill bag
-            game.bag = [4, 4, 4];
-            return Math.floor(Math.random() * 3) + 1;
-        }
-
-        // Weighted random selection
-        const r = Math.random() * total;
-        if (r < bag[0]) {
-            game.bag[0]--;
-            return 1;
-        } else if (r < bag[0] + bag[1]) {
-            game.bag[1]--;
-            return 2;
-        } else {
-            game.bag[2]--;
-            return 3;
-        }
+        // Return tile with highest count (prefer lower tiles on tie)
+        if (bag[0] >= bag[1] && bag[0] >= bag[2]) return 1;
+        if (bag[1] >= bag[2]) return 2;
+        return 3;
     }
 
     /**

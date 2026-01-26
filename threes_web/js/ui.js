@@ -103,13 +103,13 @@ class ThreesUI {
         }
     }
 
-    async animateMove(moveResult, skipAnimation = false) {
+    async animateMove(moveResult, animationDuration = 150) {
         if (!moveResult.moved) return;
 
         this.isAnimating = true;
 
-        // If skipping animation, just render final state immediately
-        if (skipAnimation) {
+        // If animation duration is 0, just render final state immediately
+        if (animationDuration === 0) {
             this.render();
             this.isAnimating = false;
             return;
@@ -128,18 +128,22 @@ class ThreesUI {
         const cellSize = cells[1].getBoundingClientRect().left - cells[0].getBoundingClientRect().left;
         const animatedTiles = [];
 
+        // Set transition duration based on animationDuration
+        const transitionStyle = `transform ${animationDuration}ms ease-out`;
+
         for (const movement of moveResult.movements) {
             const tile = this.tileElements[movement.fromRow][movement.fromCol];
             const deltaX = (movement.toCol - movement.fromCol) * cellSize;
             const deltaY = (movement.toRow - movement.fromRow) * cellSize;
 
+            tile.style.transition = transitionStyle;
             tile.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
             tile.style.zIndex = '10';
             animatedTiles.push(tile);
         }
 
         // 3. Wait for slide animation
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise(resolve => setTimeout(resolve, animationDuration));
 
         // 4. Hide animated tiles completely before state change
         for (const tile of animatedTiles) {
@@ -163,8 +167,8 @@ class ThreesUI {
             tile.style.transition = '';
         }
 
-        // 8. Animate spawned tile sliding in from edge
-        if (moveResult.spawnedTile) {
+        // 8. Animate spawned tile sliding in from edge (only if animation is visible)
+        if (moveResult.spawnedTile && animationDuration >= 50) {
             const { row, col, direction } = moveResult.spawnedTile;
             const spawnedTile = this.tileElements[row][col];
 
@@ -182,15 +186,16 @@ class ThreesUI {
 
             // Force reflow then animate to final position
             spawnedTile.offsetHeight;
-            spawnedTile.style.transition = '';
+            spawnedTile.style.transition = transitionStyle;
             spawnedTile.style.transform = '';
         }
 
-        // 9. Merge pulse animations
+        // 9. Merge pulse animations (scale duration with animation speed)
+        const pulseDuration = Math.max(100, animationDuration);
         for (const merge of moveResult.merges) {
             const tile = this.tileElements[merge.row][merge.col];
             tile.classList.add('merge-pulse');
-            setTimeout(() => tile.classList.remove('merge-pulse'), 200);
+            setTimeout(() => tile.classList.remove('merge-pulse'), pulseDuration);
         }
 
         this.isAnimating = false;

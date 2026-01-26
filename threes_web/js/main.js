@@ -83,6 +83,20 @@ class ThreesApp {
         return parseInt(document.getElementById('expectimax-depth').value, 10);
     }
 
+    getAISpeed() {
+        return parseInt(document.getElementById('ai-speed').value, 10);
+    }
+
+    getAnimationDuration() {
+        const speed = this.getAISpeed();
+        // At speed 1: full 150ms animation
+        // At speed 10: 100ms animation
+        // At speed 20+: skip animation entirely
+        if (speed >= 20) return 0;
+        if (speed >= 10) return 100 - (speed - 10) * 10;
+        return 150 - (speed - 1) * 5;
+    }
+
     async getAIHint() {
         if (!this.ai || !this.ai.isLoaded || this.game.gameOver) return;
 
@@ -99,7 +113,7 @@ class ThreesApp {
                 hintEl.style.display = 'flex';
 
                 result = await this.expectimax.search(this.game, depth);
-                actionEl.textContent = `${actions[result.action]} (v=${result.value.toFixed(1)}, n=${result.nodesEvaluated})`;
+                actionEl.innerHTML = `${actions[result.action]} (v=${result.value.toFixed(1)})<br>n=${result.nodesEvaluated}`;
                 console.log('Expectimax:', actions[result.action], 'value:', result.value.toFixed(2), 'nodes:', result.nodesEvaluated);
             } else {
                 // Use direct neural network prediction (stateless - doesn't advance LSTM)
@@ -118,14 +132,17 @@ class ThreesApp {
     toggleAutoAI() {
         this.autoAIRunning = !this.autoAIRunning;
         const btn = document.getElementById('auto-ai-btn');
+        const speedContainer = document.getElementById('speed-container');
 
         if (this.autoAIRunning) {
             btn.textContent = 'Stop AI';
             btn.classList.add('btn-active');
+            speedContainer.style.display = 'flex';
             this.runAutoAI();
         } else {
             btn.textContent = 'Auto AI';
             btn.classList.remove('btn-active');
+            speedContainer.style.display = 'none';
         }
     }
 
@@ -135,6 +152,7 @@ class ThreesApp {
             this.autoAIRunning = false;
             document.getElementById('auto-ai-btn').textContent = 'Auto AI';
             document.getElementById('auto-ai-btn').classList.remove('btn-active');
+            document.getElementById('speed-container').style.display = 'none';
             return;
         }
 
@@ -148,7 +166,7 @@ class ThreesApp {
                 // Use expectimax search
                 const depth = this.getExpectimaxDepth();
                 result = await this.expectimax.search(this.game, depth);
-                actionEl.textContent = `${actions[result.action]} (v=${result.value.toFixed(1)}, n=${result.nodesEvaluated})`;
+                actionEl.innerHTML = `${actions[result.action]} (v=${result.value.toFixed(1)})<br>n=${result.nodesEvaluated}`;
             } else {
                 // Use direct neural network prediction
                 result = await this.ai.predict(this.game);
@@ -157,22 +175,32 @@ class ThreesApp {
 
             hintEl.style.display = 'flex';
 
-            // Make the move
-            await this.handleMove(result.action);
+            // Get speed and animation settings
+            const speed = this.getAISpeed();
+            const animDuration = this.getAnimationDuration();
 
-            // Schedule next move (small delay for visibility)
+            // Make the move with appropriate animation duration
+            await this.handleMove(result.action, animDuration);
+
+            // Schedule next move based on speed (moves per second)
             if (this.autoAIRunning && !this.game.gameOver) {
-                setTimeout(() => this.runAutoAI(), 50);
+                const delay = Math.max(0, Math.floor(1000 / speed) - animDuration);
+                setTimeout(() => this.runAutoAI(), delay);
             }
         } catch (error) {
             console.error('Auto AI error:', error);
             this.autoAIRunning = false;
             document.getElementById('auto-ai-btn').textContent = 'Auto AI';
+            document.getElementById('speed-container').style.display = 'none';
         }
     }
 
-    async handleMove(direction, skipAnimation = false) {
+    async handleMove(direction, animationDuration = 150) {
         if (this.game.gameOver) return;
+
+        // Handle legacy boolean parameter (true = skip, false = default)
+        if (animationDuration === true) animationDuration = 0;
+        if (animationDuration === false) animationDuration = 150;
 
         // If animating, buffer this input for later
         if (this.ui.isAnimating) {
@@ -185,8 +213,8 @@ class ThreesApp {
         if (result.moved) {
             this.audio.playMove();
 
-            // Animate the move (or skip if requested)
-            await this.ui.animateMove(result, skipAnimation);
+            // Animate the move with specified duration (0 = skip)
+            await this.ui.animateMove(result, animationDuration);
 
             // Play merge sounds
             for (const merge of result.merges) {
@@ -210,7 +238,7 @@ class ThreesApp {
             if (this.pendingMove !== null) {
                 const nextMove = this.pendingMove;
                 this.pendingMove = null;
-                await this.handleMove(nextMove, true);
+                await this.handleMove(nextMove, 0);
             }
         }
     }
@@ -253,11 +281,12 @@ class ThreesApp {
         if (this.ai && this.ai.isLoaded) {
             this.ai.resetState();
         }
-        // Stop auto-AI and hide hint
+        // Stop auto-AI and hide hint/speed controls
         this.autoAIRunning = false;
         document.getElementById('auto-ai-btn').textContent = 'Auto AI';
         document.getElementById('auto-ai-btn').classList.remove('btn-active');
         document.getElementById('ai-hint').style.display = 'none';
+        document.getElementById('speed-container').style.display = 'none';
     }
 
     async confirmNewGame() {
@@ -312,6 +341,11 @@ class ThreesApp {
         // Expectimax toggle - show/hide depth selector
         document.getElementById('expectimax-toggle').addEventListener('change', (e) => {
             document.getElementById('depth-container').style.display = e.target.checked ? 'flex' : 'none';
+        });
+
+        // Speed slider - update display
+        document.getElementById('ai-speed').addEventListener('input', (e) => {
+            document.getElementById('speed-value').textContent = e.target.value;
         });
     }
 
