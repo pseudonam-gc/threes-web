@@ -11,6 +11,9 @@ class ThreesApp {
         this.ai = null; // AI model
         this.expectimax = null; // Expectimax search
         this.autoAIRunning = false; // Auto-AI mode flag
+        // Speed tracking
+        this.moveTimestamps = [];
+        this.lastSpeedUpdate = 0;
     }
 
     init() {
@@ -83,8 +86,12 @@ class ThreesApp {
         return parseInt(document.getElementById('expectimax-depth').value, 10);
     }
 
+    // Logarithmic speed ticks: slider position -> moves per second
+    speedTicks = [1, 2, 3, 4, 5, 10, 20, 40, 100, 200, 400];
+
     getAISpeed() {
-        return parseInt(document.getElementById('ai-speed').value, 10);
+        const sliderPos = parseInt(document.getElementById('ai-speed').value, 10);
+        return this.speedTicks[sliderPos] || 10;
     }
 
     getAnimationDuration() {
@@ -138,6 +145,10 @@ class ThreesApp {
             btn.textContent = 'Stop AI';
             btn.classList.add('btn-active');
             speedContainer.style.display = 'flex';
+            // Reset speed tracking
+            this.moveTimestamps = [];
+            this.lastSpeedUpdate = 0;
+            document.getElementById('speed-actual').textContent = '-';
             this.runAutoAI();
         } else {
             btn.textContent = 'Auto AI';
@@ -181,6 +192,19 @@ class ThreesApp {
 
             // Make the move with appropriate animation duration
             await this.handleMove(result.action, animDuration);
+
+            // Track actual speed
+            const now = performance.now();
+            this.moveTimestamps.push(now);
+            // Keep only last 1 second of timestamps
+            const cutoff = now - 1000;
+            this.moveTimestamps = this.moveTimestamps.filter(t => t > cutoff);
+            // Update display every 200ms
+            if (now - this.lastSpeedUpdate > 200) {
+                const actualSpeed = this.moveTimestamps.length;
+                document.getElementById('speed-actual').textContent = actualSpeed;
+                this.lastSpeedUpdate = now;
+            }
 
             // Schedule next move based on speed (moves per second)
             if (this.autoAIRunning && !this.game.gameOver) {
@@ -343,9 +367,10 @@ class ThreesApp {
             document.getElementById('depth-container').style.display = e.target.checked ? 'flex' : 'none';
         });
 
-        // Speed slider - update display
+        // Speed slider - update display with mapped value
         document.getElementById('ai-speed').addEventListener('input', (e) => {
-            document.getElementById('speed-value').textContent = e.target.value;
+            const speed = this.speedTicks[parseInt(e.target.value, 10)] || 10;
+            document.getElementById('speed-value').textContent = speed;
         });
     }
 

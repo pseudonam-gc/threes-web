@@ -201,8 +201,7 @@ class ThreesGame {
 
             // Reset bonus position every 21 moves
             if (this.movesMade % 21 === 0) {
-                //this.bonusPosition = Math.floor(Math.random() * 21);
-                this.bonusPosition = 100; // Disable bonus tiles for now
+                this.bonusPosition = Math.floor(Math.random() * 21);
             }
             this.movesMade++;
 
