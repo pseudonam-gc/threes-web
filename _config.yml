@@ -1,0 +1,6 @@
+exclude:
+  - Makefile
+  - REQUIREMENTS.md
+  - README.md
+  - node_modules/
+  - vendor/
