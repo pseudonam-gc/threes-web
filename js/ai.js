@@ -15,7 +15,8 @@ class ThreesAI {
         try {
             // Disable multi-threading to avoid crossOriginIsolated requirement
             ort.env.wasm.numThreads = 1;
-            ort.env.wasm.simd = true;
+            // Don't force SIMD - let ONNX Runtime auto-detect browser support
+            // (Mobile browsers often have incomplete SIMD support)
 
             console.log('Loading ONNX model from:', modelPath);
             console.log('ONNX Runtime version:', ort.env.versions?.web || 'unknown');
