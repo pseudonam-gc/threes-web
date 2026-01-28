@@ -368,10 +368,14 @@ class ThreesApp {
         });
 
         // Speed slider - update display with mapped value
-        document.getElementById('ai-speed').addEventListener('input', (e) => {
+        // Listen to both 'input' and 'change' for mobile compatibility
+        const speedSlider = document.getElementById('ai-speed');
+        const updateSpeedDisplay = (e) => {
             const speed = this.speedTicks[parseInt(e.target.value, 10)] || 10;
             document.getElementById('speed-value').textContent = speed;
-        });
+        };
+        speedSlider.addEventListener('input', updateSpeedDisplay);
+        speedSlider.addEventListener('change', updateSpeedDisplay);
     }
 
     registerServiceWorker() {
