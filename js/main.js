@@ -380,8 +380,7 @@ class ThreesApp {
   			navigator.serviceWorker.register(swPath)
     		.then(reg => console.log('SW registered:', reg))
     		.catch(err => console.error('SW registration failed:', err));
-			}
-        }
+		}
     }
 }
 
