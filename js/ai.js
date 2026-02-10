@@ -70,11 +70,11 @@ class ThreesAI {
      * Prepare observation from game state
      * Based on threes.h update_observations():
      * - 16 bytes: grid tile indices (0-16)
+     * - 1 byte: next_box (1-3) or next_triplet (for bonus, capped at 16)
      * - 4 bytes: bag counts [bag[0], bag[1], bag[2], total]
-     * - 4 bytes: next_box one-hot (maps 1,2,3,4+ to indices 0,1,2,3)
      */
     prepareObservation(game) {
-        const obs = new Uint8Array(24);
+        const obs = new Uint8Array(21);
 
         // Grid tile indices (0-16), capped at 16
         for (let i = 0; i < 4; i++) {
@@ -84,17 +84,20 @@ class ThreesAI {
             }
         }
 
-        // Bag counts at offset 16
         const offset = 16;
-        obs[offset] = game.bag[0];
-        obs[offset + 1] = game.bag[1];
-        obs[offset + 2] = game.bag[2];
-        obs[offset + 3] = game.bag[0] + game.bag[1] + game.bag[2];
 
-        // Next box one-hot at offset 20
-        // Maps nextTile: 1,2,3,4+ to indices 0,1,2,3
-        const nextBoxIndex = Math.min(game.nextTile - 1, 3);
-        obs[offset + 4 + nextBoxIndex] = 1;
+        // Next tile: raw value for 1-3, or nextTriplet index for bonus
+        if (game.nextTile >= 1 && game.nextTile <= 3) {
+            obs[offset] = game.nextTile;
+        } else {
+            obs[offset] = Math.min(game.nextTriplet, 16);
+        }
+
+        // Bag counts at offset 17
+        obs[offset + 1] = game.bag[0];
+        obs[offset + 2] = game.bag[1];
+        obs[offset + 3] = game.bag[2];
+        obs[offset + 4] = game.bag[0] + game.bag[1] + game.bag[2];
 
         return obs;
     }
@@ -113,13 +116,13 @@ class ThreesAI {
         const obs = this.prepareObservation(game);
 
         // Convert to int64 tensor
-        const inputData = new BigInt64Array(24);
-        for (let i = 0; i < 24; i++) {
+        const inputData = new BigInt64Array(21);
+        for (let i = 0; i < 21; i++) {
             inputData[i] = BigInt(obs[i]);
         }
 
         // Create input tensors
-        const obsTensor = new ort.Tensor('int64', inputData, [1, 24]);
+        const obsTensor = new ort.Tensor('int64', inputData, [1, 21]);
         const lstmHTensor = new ort.Tensor('float32', this.lstmH, [1, this.hiddenSize]);
         const lstmCTensor = new ort.Tensor('float32', this.lstmC, [1, this.hiddenSize]);
 
@@ -162,10 +165,76 @@ class ThreesAI {
     /**
      * Get recommended move direction constant
      * Returns: UP(0), DOWN(1), LEFT(2), or RIGHT(3) matching game.js constants
+     * Falls back to next-best valid move if top choice is invalid
      */
     async getMove(game) {
         const result = await this.predict(game);
-        return result.action;
+        return this.bestValidAction(game, result.probs);
+    }
+
+    /**
+     * Pick the highest-probability action that is actually a valid move.
+     * Returns the action index, or the top action if none are valid (shouldn't happen).
+     */
+    bestValidAction(game, probs) {
+        // Sort actions by probability descending
+        const ranked = [0, 1, 2, 3].sort((a, b) => probs[b] - probs[a]);
+        for (const action of ranked) {
+            if (this.isMoveValid(game, action)) return action;
+        }
+        return ranked[0];
+    }
+
+    /**
+     * Check if a move direction would actually move any tiles
+     */
+    isMoveValid(game, direction) {
+        const SIZE = 4;
+        const EMPTY = 0;
+
+        const canCombine = (a, b) => {
+            if (a === EMPTY || b === EMPTY) return false;
+            if ((a === 1 && b === 2) || (a === 2 && b === 1)) return true;
+            if (a === b && a >= 3) return true;
+            return false;
+        };
+
+        const checkLine = (arr) => {
+            for (let i = 1; i < SIZE; i++) {
+                if (arr[i] !== EMPTY) {
+                    if (canCombine(arr[i], arr[i - 1])) return true;
+                    if (arr[i - 1] === EMPTY) return true;
+                }
+            }
+            return false;
+        };
+
+        if (direction === 0) { // UP
+            for (let col = 0; col < SIZE; col++) {
+                const line = [];
+                for (let row = 0; row < SIZE; row++) line.push(game.grid[row][col]);
+                if (checkLine(line)) return true;
+            }
+        } else if (direction === 1) { // DOWN
+            for (let col = 0; col < SIZE; col++) {
+                const line = [];
+                for (let row = SIZE - 1; row >= 0; row--) line.push(game.grid[row][col]);
+                if (checkLine(line)) return true;
+            }
+        } else if (direction === 2) { // LEFT
+            for (let row = 0; row < SIZE; row++) {
+                const line = [];
+                for (let col = 0; col < SIZE; col++) line.push(game.grid[row][col]);
+                if (checkLine(line)) return true;
+            }
+        } else { // RIGHT
+            for (let row = 0; row < SIZE; row++) {
+                const line = [];
+                for (let col = SIZE - 1; col >= 0; col--) line.push(game.grid[row][col]);
+                if (checkLine(line)) return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -181,14 +250,14 @@ class ThreesAI {
         const obs = this.prepareObservation(game);
 
         // Convert to int64 tensor
-        const inputData = new BigInt64Array(24);
-        for (let i = 0; i < 24; i++) {
+        const inputData = new BigInt64Array(21);
+        for (let i = 0; i < 21; i++) {
             inputData[i] = BigInt(obs[i]);
         }
 
         // Create input tensors - use CURRENT LSTM state for better value estimates
         // (The model was trained with LSTM context, so zeroed state gives poor values)
-        const obsTensor = new ort.Tensor('int64', inputData, [1, 24]);
+        const obsTensor = new ort.Tensor('int64', inputData, [1, 21]);
         const lstmHTensor = new ort.Tensor('float32', this.lstmH, [1, this.hiddenSize]);
         const lstmCTensor = new ort.Tensor('float32', this.lstmC, [1, this.hiddenSize]);
 

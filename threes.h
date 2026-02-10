@@ -82,6 +82,7 @@ typedef struct {
 
     unsigned char bag[3];
     unsigned char next_box;
+    unsigned char next_triplet;
     unsigned char valid_spawn_positions[16]; // Positions where new tiles can spawn
 
     // Cached values to avoid recomputation
@@ -95,6 +96,7 @@ const Color PUFF_BACKGROUND = (Color){6, 24, 24, 255};
 const Color PUFF_WHITE = (Color){241, 241, 241, 241};
 const Color PUFF_RED = (Color){187, 0, 0, 255};
 const Color PUFF_BLACK = (Color){0, 0, 0, 255};
+const Color PUFF_PURPLE = (Color){128, 0, 128, 255};
 
 static Color tile_colors[4] = {
     {6, 24, 24, 255}, // Empty/background
@@ -140,11 +142,11 @@ void init(Game* game) {
 void update_observations(Game* game) {
     // Observation layout: 24 bytes total
     // - 16 bytes: raw tile indices (0-16) for 4x4 grid
+    // - 1 byte: next_box one-hot (0-16)
     // - 4 bytes: bag counts [bag[0], bag[1], bag[2], total]
-    // - 4 bytes: next_box one-hot
 
     int num_cell = SIZE * SIZE;
-    memset(game->observations, 0, (num_cell + 8) * sizeof(unsigned char));
+    memset(game->observations, 0, (num_cell + 5) * sizeof(unsigned char));
 
     // Raw tile indices (0-16), capped at 16
     for (int i = 0; i < SIZE; i++) {
@@ -156,16 +158,21 @@ void update_observations(Game* game) {
 
     // Additional obs at offset 16
     int offset = num_cell;
-
+    
+    if (game->next_box >= 1 && game->next_box <= 3) {
+        game->observations[offset] = game->next_box;
+    } else {
+        game->observations[offset] = min(game->next_triplet, 16);
+    }
     // Bag counts
-    game->observations[offset] = game->bag[0];
-    game->observations[offset + 1] = game->bag[1];
-    game->observations[offset + 2] = game->bag[2];
-    game->observations[offset + 3] = game->bag[0] + game->bag[1] + game->bag[2];
+    game->observations[offset + 1] = game->bag[0];
+    game->observations[offset + 2] = game->bag[1];
+    game->observations[offset + 3] = game->bag[2];
+    game->observations[offset + 4] = game->bag[0] + game->bag[1] + game->bag[2];
 
     // Next box one-hot
-    int next_box_index = min(game->next_box - 1, 3); // maps 1,2,3,4+ to 0,1,2,3
-    game->observations[offset + 4 + next_box_index] = 1;
+    // if next box is 1-3, set observation to that
+    // if next box is a bonus, reveal next_triplet index instead
 }
 
 void add_log(Game* game) {
@@ -200,25 +207,25 @@ static inline unsigned char draw_bonus_tile(Game* game) {
 
     if (num_bonuses <= 1) {
         // Only one possible bonus (6)
+        game -> next_triplet = min_bonus_idx;
         return min_bonus_idx;
     } else if (num_bonuses == 2) {
         // Two possible bonuses (6, 12), uniform
+        game -> next_triplet = min_bonus_idx;
         return min_bonus_idx + (rand() % 2);
-    } else if (num_bonuses == 3) {
-        // Three possible bonuses (6, 12, 24), uniform
-        return min_bonus_idx + (rand() % 3);
     } else {
         // Four or more: use triplet system
         // Pick a random triplet, then pick uniformly within it
         int num_triplets = num_bonuses - 2;
         int triplet = rand() % num_triplets;
         int pos_in_triplet = rand() % 3;
+        // Store the triplet for observation
+        game->next_triplet = triplet + min_bonus_idx;
         return min_bonus_idx + triplet + pos_in_triplet;
     }
 }
 
 static inline void draw_from_bag(Game* game) {
-
     if ((game->moves_made % 21) == game->bonus && game->max_tile > 6) {
         // draw a bonus tile using proper probability weighting
         game->next_box = draw_bonus_tile(game);
@@ -294,12 +301,11 @@ static inline void place_tile(Game* game, unsigned char tile) {
 void set_scaffolding_curriculum(Game* game) {
     game->stop_at_65536 = true;
 
-    unsigned char tiles[] = {};
     int preplaced_tiles = rand() % 4 + 3; // Preplace between 3 to 6 tiles
     // None of them can be ones or twos.
 
     int min_tile = max(3, game->lifetime_max_tile - 2);
-    int max_tile = min(16, game->lifetime_max_tile + 2);
+    int max_tile = min(16, game->lifetime_max_tile);
 
     // Add to tiles array
     for (int i = 0; i < preplaced_tiles; i++) {
@@ -346,11 +352,9 @@ void c_reset(Game* game) {
     game->bag[0] = 4;
     game->bag[1] = 4;
     game->bag[2] = 4;
+    game->next_triplet = 0; // Reset
 
     memset(game->valid_spawn_positions, 0, SIZE * SIZE * sizeof(unsigned char));
-    
-    //if (game->terminals) game->terminals[0] = 0;
-    
     // End game envs only do endgame curriculum
     if (game->is_endgame_env) {
         set_endgame_curriculum(game);
@@ -360,14 +364,13 @@ void c_reset(Game* game) {
         // Having high tiles saves moves to get there, allowing agents to experience it faster
         
         // disable scaffolding for now
-        //game->is_scaffolding_episode = true;
         game->is_scaffolding_episode = (rand() / (float)RAND_MAX) < game->scaffolding_ratio;
         if (game->is_scaffolding_episode && game->lifetime_max_tile >= 6) {
             set_scaffolding_curriculum(game);
         } else {
-            // Add eight random tiles at the start
+            // Add nine random tiles at the start
             draw_from_bag(game);
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < 9; i++) {
                 place_tile_at_random_cell(game, game->next_box);
                 game->score += (float)(piece_scores[game->next_box]);
                 draw_from_bag(game);
@@ -782,33 +785,56 @@ void c_render(Game* game) {
     
     // Draw next boxes
     int val = game->next_box;
-    int display_val = piece_vals[game->next_box];
-    snprintf(score_text, sizeof(score_text), "%d", display_val);
     DrawText("Next:", px * SIZE + 15, 50, 24, PUFF_WHITE);
-    DrawRectangle(px * SIZE + 20, 80, px - 40, px - 40, tile_colors[min(game->next_box, 3)]);
+    
     int font_size = 32;
-    int x_offset = 20; // Default for 4-digit numbers
-    if (display_val < 10) x_offset = 40;
-    else if (display_val < 100) x_offset = 35;
-    else if (display_val < 1000) x_offset = 25;
-    else if (display_val < 10000) x_offset = 15;
-    else if (display_val < 100000) x_offset = 2;
-    else {
-        font_size = 24;
-        x_offset = 5;
-    }
+    int x_offset = 40; // Default for 4-digit numbers
+    if (val <= 3) {
+        int display_val = piece_vals[game->next_box];
+        snprintf(score_text, sizeof(score_text), "%d", display_val);
+        DrawRectangle(px * SIZE + 20, 80, px - 40, px - 40, tile_colors[min(game->next_box, 3)]);
 
-    Color text_color;
+            
+        Color text_color;
 
-    if (val <= 2) {
-        text_color = PUFF_WHITE;
-    } else if (val == 3) {
-        text_color = PUFF_BLACK;
+        if (val <= 2) {
+            text_color = PUFF_WHITE;
+        } else {
+            text_color = PUFF_BLACK;
+        } 
+        
+        snprintf(score_text, sizeof(score_text), "%d", display_val);
+        DrawText(score_text, px * SIZE + 5 + x_offset, 80 + 20, font_size, text_color);
+
     } else {
-        text_color = PUFF_RED;
-    }    
-    snprintf(score_text, sizeof(score_text), "%d", display_val);
-    DrawText(score_text, px * SIZE + 5 + x_offset, 80 + 20, font_size, text_color);
+        // display all three bonus options, val, val+1, val+2
+        for (int i = 0; i < 3; i++) {
+            if (val + i > 16) break; // No bonus beyond 65536
+            
+            
+            if (game->next_triplet+i > game->max_tile - 3) {
+                break; // No bonus beyond max_tile / 8
+            }
+            
+            int display_val = piece_vals[game->next_triplet+i];//piece_vals[val + i];
+            //printf("%d",game->next_triplet+i);
+
+            if (display_val < 10) x_offset = 40;
+            else if (display_val < 100) x_offset = 35;
+            else if (display_val < 1000) x_offset = 25;
+            else if (display_val < 10000) x_offset = 15;
+            else if (display_val < 100000) x_offset = 2;
+            else {
+                x_offset = 5;
+            }   
+            
+            Color text_color = PUFF_RED;
+            font_size = 24;
+            snprintf(score_text, sizeof(score_text), "%d", display_val);
+            DrawRectangle(px * SIZE + 20, 80 + i * (px-40 + 10), px - 40, px - 40, PUFF_PURPLE);
+            DrawText(score_text, px * SIZE + 5 + x_offset, 80 + i * (px - 40 + 10) + 20, font_size, text_color);
+        }
+    }
 
     EndDrawing();
 }
@@ -818,4 +844,3 @@ void c_close(Game* game) {
         CloseWindow();
     }
 }
-

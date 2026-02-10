@@ -35,35 +35,40 @@
 
         <aside class="ai-sidebar">
             <h3 class="sidebar-title">AI Controls</h3>
-            <div class="ai-hint" id="ai-hint" style="display: none;">
-                <span class="ai-label">AI:</span>
-                <span id="ai-action">-</span>
+            <div class="ai-loading" id="ai-loading">
+                <div class="spinner"></div>
+                <span>Loading model...</span>
             </div>
-            <div class="ai-options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="expectimax-toggle">
-                    <span>Expectimax</span>
-                </label>
-                <label class="depth-label" id="depth-container" style="display: none;">
-                    Depth: <select id="expectimax-depth">
-                        <option value="1">1</option>
-                        <option value="2" selected>2</option>
-                        <option value="3">3</option>
-                    </select>
-                </label>
-            </div>
-            <div class="ai-buttons">
-                <button class="btn btn-secondary" id="ai-btn" disabled>AI Hint</button>
-                <button class="btn btn-secondary" id="auto-ai-btn" disabled>Auto AI</button>
-            </div>
-            <div class="speed-control" id="speed-container" style="display: none;">
-                <label class="speed-label">
-                    Target: <span id="speed-value">10</span>/s
-                </label>
-                <input type="range" id="ai-speed" min="0" max="10" value="5" class="speed-slider">
-                <label class="speed-label speed-actual">
-                    Actual: <span id="speed-actual">-</span>/s
-                </label>
+            <div class="ai-content" id="ai-content" style="display: none;">
+                <div class="ai-hint" id="ai-hint" style="display: none;">
+                    <span class="ai-label">AI:</span>
+                    <span id="ai-action">-</span>
+                </div>
+                <div class="ai-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="expectimax-toggle">
+                        <span>Expectimax</span>
+                    </label>
+                    <label class="depth-label" id="depth-container" style="display: none;">
+                        Depth: <select id="expectimax-depth">
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="ai-buttons">
+                    <button class="btn btn-secondary" id="ai-btn">AI Hint</button>
+                    <button class="btn btn-secondary" id="auto-ai-btn">Auto AI</button>
+                </div>
+                <div class="speed-control" id="speed-container" style="display: none;">
+                    <label class="speed-label">
+                        Target: <span id="speed-value">10</span>/s
+                    </label>
+                    <input type="range" id="ai-speed" min="0" max="10" value="5" class="speed-slider">
+                    <label class="speed-label speed-actual">
+                        Actual: <span id="speed-actual">-</span>/s
+                    </label>
+                </div>
             </div>
         </aside>
     </main>

@@ -88,18 +88,42 @@ class ThreesUI {
     updateNextTile() {
         const value = this.game.nextTile;
         const displayValue = TILE_VALUES[value];
+        const nextTileContainer = this.nextTileEl.parentElement;
 
-        this.nextTileValueEl.textContent = displayValue;
-        this.nextTileEl.className = 'next-tile-box';
+        // Remove any existing bonus options
+        const oldOptions = nextTileContainer.querySelector('.bonus-options');
+        if (oldOptions) oldOptions.remove();
 
         if (this.game.nextTileIsBonus) {
-            this.nextTileEl.classList.add('tile-bonus');
-        } else if (value === 1) {
-            this.nextTileEl.classList.add('tile-1');
-        } else if (value === 2) {
-            this.nextTileEl.classList.add('tile-2');
+            // Hide the single next-tile-box
+            this.nextTileEl.style.display = 'none';
+
+            // Create row of full-size bonus option boxes
+            const container = document.createElement('div');
+            container.className = 'bonus-options';
+
+            const options = this.game.getBonusOptions();
+            for (const val of options) {
+                const box = document.createElement('div');
+                box.className = 'next-tile-box tile-bonus';
+                box.textContent = val;
+                container.appendChild(box);
+            }
+
+            nextTileContainer.appendChild(container);
         } else {
-            this.nextTileEl.classList.add('tile-high');
+            // Show the single next-tile-box
+            this.nextTileEl.style.display = '';
+            this.nextTileEl.className = 'next-tile-box';
+            this.nextTileValueEl.textContent = displayValue;
+
+            if (value === 1) {
+                this.nextTileEl.classList.add('tile-1');
+            } else if (value === 2) {
+                this.nextTileEl.classList.add('tile-2');
+            } else {
+                this.nextTileEl.classList.add('tile-high');
+            }
         }
     }
 

@@ -64,9 +64,9 @@ class ThreesApp {
         try {
             this.ai = new ThreesAI();
             const loaded = await this.ai.load('model/onnx_model.onnx');
+            document.getElementById('ai-loading').style.display = 'none';
             if (loaded) {
-                document.getElementById('ai-btn').disabled = false;
-                document.getElementById('auto-ai-btn').disabled = false;
+                document.getElementById('ai-content').style.display = '';
                 // Initialize expectimax search
                 this.expectimax = new ExpectimaxSearch(this.ai);
                 console.log('AI model loaded successfully');
@@ -74,6 +74,7 @@ class ThreesApp {
                 console.warn('Failed to load AI model');
             }
         } catch (error) {
+            document.getElementById('ai-loading').style.display = 'none';
             console.error('Error initializing AI:', error);
         }
     }
@@ -125,6 +126,8 @@ class ThreesApp {
             } else {
                 // Use direct neural network prediction (stateless - doesn't advance LSTM)
                 result = await this.ai.predictWithoutStateUpdate(this.game);
+                // Pick best valid action
+                result.action = this.ai.bestValidAction(this.game, result.probs);
                 actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
                 console.log('AI prediction:', actions[result.action], 'probs:', result.probs.map(p => p.toFixed(3)));
             }
@@ -177,10 +180,14 @@ class ThreesApp {
                 // Use expectimax search
                 const depth = this.getExpectimaxDepth();
                 result = await this.expectimax.search(this.game, depth);
+                // Advance LSTM state with current observation (search doesn't update it)
+                await this.ai.predict(this.game);
                 actionEl.innerHTML = `${actions[result.action]} (v=${result.value.toFixed(1)})<br>n=${result.nodesEvaluated}`;
             } else {
                 // Use direct neural network prediction
                 result = await this.ai.predict(this.game);
+                // Pick best valid action
+                result.action = this.ai.bestValidAction(this.game, result.probs);
                 actionEl.textContent = `${actions[result.action]} (${(result.probs[result.action] * 100).toFixed(1)}%)`;
             }
 

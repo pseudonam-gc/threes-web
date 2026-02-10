@@ -23,6 +23,7 @@ class ThreesGame {
         this.gameOver = false;
         this.lastMove = null;
         this.validSpawnPositions = [];
+        this.nextTriplet = 0;
     }
 
     init() {
@@ -36,6 +37,7 @@ class ThreesGame {
         this.gameOver = false;
         this.lastMove = null;
         this.validSpawnPositions = [];
+        this.nextTriplet = 0;
 
         // Place 9 initial tiles
         for (let i = 0; i < 9; i++) {
@@ -95,16 +97,17 @@ class ThreesGame {
         const numBonuses = maxBonusIdx - minBonusIdx + 1;
 
         if (numBonuses <= 1) {
+            this.nextTriplet = minBonusIdx;
             return minBonusIdx;
         } else if (numBonuses === 2) {
+            this.nextTriplet = minBonusIdx;
             return minBonusIdx + Math.floor(Math.random() * 2);
-        } else if (numBonuses === 3) {
-            return minBonusIdx + Math.floor(Math.random() * 3);
         } else {
-            // Triplet system
+            // Triplet system: 3+ bonuses
             const numTriplets = numBonuses - 2;
             const triplet = Math.floor(Math.random() * numTriplets);
             const posInTriplet = Math.floor(Math.random() * 3);
+            this.nextTriplet = triplet + minBonusIdx;
             return minBonusIdx + triplet + posInTriplet;
         }
     }
@@ -388,7 +391,8 @@ class ThreesGame {
             movesMade: this.movesMade,
             bonusPosition: this.bonusPosition,
             maxTile: this.maxTile,
-            gameOver: this.gameOver
+            gameOver: this.gameOver,
+            nextTriplet: this.nextTriplet
         };
     }
 
@@ -402,6 +406,19 @@ class ThreesGame {
         this.bonusPosition = state.bonusPosition;
         this.maxTile = state.maxTile;
         this.gameOver = state.gameOver;
+        this.nextTriplet = state.nextTriplet || 0;
+    }
+
+    getBonusOptions() {
+        const maxBonusIdx = this.maxTile - 3;
+        const options = [];
+        for (let i = 0; i < 3; i++) {
+            const idx = this.nextTriplet + i;
+            if (idx > 16) break;
+            if (idx > maxBonusIdx) break;
+            options.push(TILE_VALUES[idx]);
+        }
+        return options;
     }
 
     getTileValue(index) {

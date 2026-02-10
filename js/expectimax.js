@@ -170,6 +170,7 @@ class ExpectimaxSearch {
             bag: [...game.bag],
             nextTile: game.nextTile,
             nextTileIsBonus: game.nextTileIsBonus || false,
+            nextTriplet: game.nextTriplet || 0,
             movesMade: game.movesMade,
             bonusPosition: game.bonusPosition,
             maxTile: game.maxTile,
