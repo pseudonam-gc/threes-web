@@ -4,6 +4,8 @@ class ThreesAudio {
     constructor() {
         this.enabled = true;
         this.audioContext = null;
+        this.masterGain = null;
+        this.compressor = null;
         this.initialized = false;
     }
 
@@ -19,6 +21,21 @@ class ThreesAudio {
 
         try {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Master compressor to prevent clipping from overlapping sounds
+            this.compressor = this.audioContext.createDynamicsCompressor();
+            this.compressor.threshold.value = -24;
+            this.compressor.knee.value = 12;
+            this.compressor.ratio.value = 8;
+            this.compressor.attack.value = 0.003;
+            this.compressor.release.value = 0.1;
+
+            this.masterGain = this.audioContext.createGain();
+            this.masterGain.gain.value = 0.8;
+
+            this.masterGain.connect(this.compressor);
+            this.compressor.connect(this.audioContext.destination);
+
             this.initialized = true;
         } catch (e) {
             console.warn('Web Audio API not supported:', e);
@@ -33,20 +50,24 @@ class ThreesAudio {
         if (!this.enabled || !this.audioContext) return;
 
         try {
+            const now = this.audioContext.currentTime;
             const oscillator = this.audioContext.createOscillator();
             const gainNode = this.audioContext.createGain();
 
             oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
+            gainNode.connect(this.masterGain);
 
             oscillator.frequency.value = frequency;
             oscillator.type = type;
 
-            gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+            // Short fade-in to avoid click on start
+            gainNode.gain.setValueAtTime(0.001, now);
+            gainNode.gain.exponentialRampToValueAtTime(volume, now + 0.005);
+            // Fade out
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-            oscillator.start(this.audioContext.currentTime);
-            oscillator.stop(this.audioContext.currentTime + duration);
+            oscillator.start(now);
+            oscillator.stop(now + duration + 0.01);
         } catch (e) {
             // Ignore audio errors
         }
