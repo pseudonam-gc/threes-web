@@ -142,6 +142,8 @@ I ran the model without any search on 100 games, achieving the following results
 
 The model also successfully reached the 12288-tile around 50 times in training. 
 
+I later reran a later version of the model on 10,000 games, achieving a 6144-rate of 21.5% and a 3072-rate of 77.7%, which appears to be the best among all game-playing agents published so far.
+
 Overall, without direct calculation of any future states, **the model is able to play at the level of an expert player**, but is still well below the world's best.
 
 
